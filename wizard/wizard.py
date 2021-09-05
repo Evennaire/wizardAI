@@ -1,5 +1,4 @@
 from PyQt5 import QtCore, QtWebSockets, QtNetwork, QtGui, QtWidgets, uic
-from PyQt5.QtCore import QUrl
 import sys
 
 class MyServer():
@@ -8,11 +7,17 @@ class MyServer():
         self.server = QtWebSockets.QWebSocketServer(name, QtWebSockets.QWebSocketServer.NonSecureMode)
         self.server.acceptError.connect(self.onAcceptError)
         self.server.newConnection.connect(self.onNewConnection)
+        self.port = 1302
         self.clients = []
 
     def setup(self):
-        if self.server.listen(QtNetwork.QHostAddress.LocalHost, 1302):
+        if self.server.listen(QtNetwork.QHostAddress.Any, self.port):
             print(f"INFO: Listening {self.server.serverName()}:{self.server.serverAddress().toString()}:{str(self.server.serverPort())}")
+            for address in QtNetwork.QNetworkInterface().allAddresses():
+                if address.protocol() == QtNetwork.QAbstractSocket.IPv4Protocol and address.toString() != "127.0.0.1":
+                    print(address.toString())
+                    self.ui.label_ipaddr.setText(f"{address.toString()}:{self.port}")
+            # print(QtNetwork.QNetworkInterface().allAddresses()[1].toString())
         else:
             print("WARNING: server already listening")
             return
@@ -96,8 +101,11 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addLayout(layout_server)
 
         layout_info = QtWidgets.QHBoxLayout()
-        self.label_connect = QtWidgets.QLabel("is Listening: ")
+        self.label_connect = QtWidgets.QLabel("status")
+        self.label_ipaddr = QtWidgets.QLabel("ip addr")
+        self.label_ipaddr.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         button_clear = QtWidgets.QPushButton("Clear Text")
+        layout_info.addWidget(self.label_ipaddr)
         layout_info.addWidget(self.label_connect)
         layout_info.addWidget(button_clear)
         layout.addLayout(layout_info)
@@ -140,7 +148,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.text_edit.setTextCursor(cursor)
 
             self.line_edit.clear()
-    
+
     def receive_message(self, message):
         self.text_edit.append(f"{message}")
         cursor = self.text_edit.textCursor()
