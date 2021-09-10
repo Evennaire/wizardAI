@@ -92,20 +92,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # add layout
         layout_server = QtWidgets.QHBoxLayout()
+        self.label_ipaddr = QtWidgets.QLabel("ip addr")
         self.button_setupserver = QtWidgets.QPushButton("Setup Server")
         self.button_setupserver.clicked.connect(self.server.setup)
         self.button_closeserver = QtWidgets.QPushButton("Close Server")
         self.button_closeserver.clicked.connect(self.server.close)
+        layout_server.addWidget(self.label_ipaddr)
         layout_server.addWidget(self.button_setupserver)
         layout_server.addWidget(self.button_closeserver)
         layout.addLayout(layout_server)
 
         layout_info = QtWidgets.QHBoxLayout()
         self.label_connect = QtWidgets.QLabel("status")
-        self.label_ipaddr = QtWidgets.QLabel("ip addr")
         self.label_ipaddr.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         button_clear = QtWidgets.QPushButton("Clear Text")
-        layout_info.addWidget(self.label_ipaddr)
         layout_info.addWidget(self.label_connect)
         layout_info.addWidget(button_clear)
         layout.addLayout(layout_info)

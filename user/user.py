@@ -10,8 +10,8 @@ class MyClient():
         self.client.textMessageReceived.connect(self.receive_message)
         self.client.stateChanged.connect(self.ui.connect_status)
     
-    def connect(self):
-        self.client.open(QtCore.QUrl("ws://127.0.0.1:1302"))
+    def connect(self, server_addr):
+        self.client.open(QtCore.QUrl(f"ws://{server_addr}"))
 
     def disconnect(self):
         if self.client.state() == 3:
@@ -25,8 +25,8 @@ class MyClient():
         return False
     
     def receive_message(self, message):
+        self.ui.showNormal()
         self.ui.receive_message(message)
-        
 
 
     def error(self, error_code):
@@ -36,16 +36,18 @@ class MyClient():
 
 
 class MainWindow_Client(QtWidgets.QMainWindow):
-    def __init__(self):    
+    def __init__(self, server_addr):    
         super(MainWindow_Client, self).__init__()
         self.setWindowTitle("Client")
         desktop_size = QtWidgets.QDesktopWidget().availableGeometry(self)
-        self.resize(int(desktop_size.width()*0.3), int(desktop_size.height()*0.5))
+        self.resize(int(desktop_size.width()*0.3), int(desktop_size.height()*0.3))
         # uic.loadUi("mainwindow.ui", self)
         self.client = MyClient("Client", self)
         self.show()
         self.build()
-        self.client.connect()
+        if server_addr:
+            self.line_edit_ip.setText(server_addr)
+            self.connect()
 
     def build(self):
         # central widget: widget
@@ -56,10 +58,12 @@ class MainWindow_Client(QtWidgets.QMainWindow):
 
         # add layout
         layout_client = QtWidgets.QHBoxLayout()
+        self.line_edit_ip = QtWidgets.QLineEdit()
         self.button_connect = QtWidgets.QPushButton("Connect to Server")
-        self.button_connect.clicked.connect(self.client.connect)
+        self.button_connect.clicked.connect(self.connect)
         self.button_disconnect = QtWidgets.QPushButton("Disconnect")
         self.button_disconnect.clicked.connect(self.client.disconnect)
+        layout_client.addWidget(self.line_edit_ip)
         layout_client.addWidget(self.button_connect)
         layout_client.addWidget(self.button_disconnect)
         layout.addLayout(layout_client)
@@ -90,7 +94,13 @@ class MainWindow_Client(QtWidgets.QMainWindow):
         label_console = QtWidgets.QLabel("Console")
         # layout_console.addWidget(label_console)
         layout.addLayout(layout_console)
-    
+
+    def connect(self):
+        if self.line_edit_ip.text() == "":
+            QtWidgets.QMessageBox.critical(self, u'提示', u"请输入serverip:port")
+        else:
+            self.client.connect(self.line_edit_ip.text())
+
     def send_message(self):
         message = self.line_edit.text()
         if message == "":
@@ -134,10 +144,16 @@ class MainWindow_Client(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         self.client.disconnect()
 
+
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle("Fusion")
-    window = MainWindow_Client()
+
+    server_addr = None
+    if len(sys.argv) > 1:
+        server_addr = sys.argv[1]
+
+    window = MainWindow_Client(server_addr)
     app.exec_()
 
     print("Closing from UI")
