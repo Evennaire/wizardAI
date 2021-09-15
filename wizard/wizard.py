@@ -1,5 +1,71 @@
 from PyQt5 import QtCore, QtWebSockets, QtNetwork, QtGui, QtWidgets, uic
+import pyaudio
 import sys
+import wave
+import os, requests, time
+import threading
+
+import faulthandler
+faulthandler.enable()
+
+
+class VoiceRecorder():
+    def __init__(self):
+        self.CHUNK = 1024
+        self.FORMAT = pyaudio.paInt16
+        self.CHANNELS = 1
+        self.RATE = 44100
+        self.RECORD_SECONDS = 3  #需要录制的时间
+        self.WAVE_OUTPUT_FILENAME = "test.wav"	#保存的文件名
+        self.frames = []
+        self.p = pyaudio.PyAudio()
+        # self.thread.setDaemon(True)
+        self.recording_flag = False
+
+    def start_record(self):
+        print("ON")
+        self.stream = self.p.open(format=self.FORMAT,
+                                channels=self.CHANNELS,
+                                rate=self.RATE,
+                                input=True,
+                                frames_per_buffer=self.CHUNK)
+        self.recording_flag = True
+        self.thread = threading.Thread(target=self.recording)
+        self.thread.start()
+
+
+        # for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
+        #     #开始录音
+
+    def recording(self):
+        while self.recording_flag:
+            self.frames.append(self.stream.read(self.CHUNK))
+
+    def stop_record(self):
+        self.recording_flag = False
+        time.sleep(0.5)
+        print("OFF")
+        print(self.frames)
+        self.stream.stop_stream()
+        print("stop stream")
+        self.stream.close()
+        print("stream close")
+        # self.p.terminate()
+        # print("terminate")
+
+    def get_frame(self):
+        return b''.join(self.frames)
+
+    def save(self):
+        wf = wave.open(self.WAVE_OUTPUT_FILENAME, 'wb')	#保存
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(p.get_sample_size(FORMAT))
+        wf.setframerate(RATE)
+        wf.writeframes(b''.join(self.frames))
+        wf.close()
+
+
+
 
 class MyServer():
     def __init__(self, name, ui):
@@ -44,8 +110,18 @@ class MyServer():
             return True
         return False
 
+    def send_binary(self, binary):
+        if len(self.clients) > 0:
+            for client in self.clients:  
+                client.sendBinaryMessage(QtCore.QByteArray(binary))
+            return True
+        return False
+
     def receive_message(self, message):
         self.ui.receive_message(message)
+    
+    def receive_binary(self, message):
+        self.ui.receive_binary(message)
 
 
     def onAcceptError(accept_error):
@@ -54,9 +130,10 @@ class MyServer():
     def onNewConnection(self):
         print("INFO: new Client connected!")
         self.clientConnection = self.server.nextPendingConnection()
-        
+
         self.clientConnection.textMessageReceived.connect(self.receive_message)
         self.clientConnection.disconnected.connect(self.socketDisconnected)
+        self.clientConnection.binaryMessageReceived.connect(self.receive_binary)
         self.clients.append(self.clientConnection)
         self.ui.label_connect.setText("Connected")
 
@@ -82,6 +159,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.show()
         self.build()
         self.server.setup()
+        self.recorder = None
 
     def build(self):
         # central widget: widget
@@ -120,16 +198,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.line_edit.setClearButtonEnabled(True)
         button_send = QtWidgets.QPushButton("Send")
         button_send.clicked.connect(self.send_message)
+        button_send_voice = QtWidgets.QPushButton("Voice")
+        button_send_voice.clicked.connect(self.send_voice)
         layout_line.addWidget(self.line_edit)
         layout_line.addWidget(button_send)
+        layout_line.addWidget(button_send_voice)
         layout.addLayout(layout_line)
         self.line_edit.returnPressed.connect(button_send.click)
-        
+
         layout_console = QtWidgets.QVBoxLayout()
         label_console = QtWidgets.QLabel("Console")
         # layout_console.addWidget(label_console)
         layout.addLayout(layout_console)
-    
+
+
     def send_message(self):
         message = self.line_edit.text()
         if message == "":
@@ -149,6 +231,98 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.line_edit.clear()
 
+
+    def send_voice(self):
+        if self.recorder:
+            self.recorder.stop_record()
+            bdata = self.recorder.get_frame()
+            self.server.send_binary(bdata)
+            del(self.recorder)
+            self.recorder = None
+        else:
+            self.recorder = VoiceRecorder()
+            self.recorder.start_record()
+        
+
+
+        # text = self.line_edit.text()
+        # subscription_key = "3b526f03d9ef4808af2920587b8b04b2"
+        # # tts = input("Input some text to convert to speech: ")  # 控制台输入
+        # tts = text
+        # timestr = time.strftime("%Y%m%d-%H%M")
+ 
+        # # # 如果需要代理
+        # # proxies = {
+        # #     "http": "代理地址1",
+        # #     "https": "代理地址2",
+        # # }
+ 
+        # fetch_token_url = "https://westus.api.cognitive.microsoft.com/sts/v1.0/issueToken"
+        # headers = {
+        #     'Ocp-Apim-Subscription-Key': subscription_key
+        # }
+        # response = requests.post(fetch_token_url, headers=headers,  verify=False) #proxies=proxies,
+        # access_token = str(response.text)
+        # print(">> 获取到Token：" + access_token)
+        # constructed_url = 'https://westus.tts.speech.microsoft.com/cognitiveservices/v1'
+        # headers = {
+        #     # 前面带有单词 Bearer 的授权令牌
+        #     'Authorization': 'Bearer ' + access_token,
+ 
+        #     # 指定所提供的文本的内容类型。 接受的值：application/ssml+xml。
+        #     'Content-Type': 'application/ssml+xml',
+ 
+        #     # 指定音频输出格式，取值如下：
+        #     # raw-16khz-16bit-mono-pcm
+        #     # raw-8khz-8bit-mono-mulaw
+        #     # riff-8khz-8bit-mono-alaw
+        #     # riff-8khz-8bit-mono-mulaw
+        #     # riff-16khz-16bit-mono-pcm
+        #     # audio-16khz-128kbitrate-mono-mp3
+        #     # audio-16khz-64kbitrate-mono-mp3
+        #     # audio-16khz-32kbitrate-mono-mp3
+        #     # raw-24khz-16bit-mono-pcm
+        #     # riff-24khz-16bit-mono-pcm
+        #     # audio-24khz-160kbitrate-mono-mp3
+        #     # audio-24khz-96kbitrate-mono-mp3
+        #     # audio-24khz-48kbitrate-mono-mp3
+        #     'X-Microsoft-OutputFormat': 'raw-16khz-16bit-mono-pcm',
+ 
+        #     # 应用程序名称，少于 255 个字符。
+        #     # Chrome的 User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36
+        #     'User-Agent': 'Chrome/73.0.3683.86'
+        # }
+        # xml_body = ElementTree.Element('speak', version='1.0')
+        # xml_body.set('{http://www.w3.org/XML/1998/namespace}lang', 'zh-cn')
+        # voice = ElementTree.SubElement(xml_body, 'voice')
+        # voice.set('{http://www.w3.org/XML/1998/namespace}lang', 'zh-cn')
+        # # 'en-US-Guy24kRUS'，全称：'Microsoft Server Speech Text to Speech Voice (en-US, Guy24KRUS)'
+        # voice.set('name','en-US-Guy24kRUS')
+        # voice.text = tts
+        # body = ElementTree.tostring(xml_body)
+        # print(">> 调用接口转换语音中......")
+        # response = requests.post(constructed_url, headers=headers, data=body, verify=False) #proxies=proxies, 
+        # if response.status_code == 200:
+        #     fileName = 'testsound-' + timestr + '.wav'
+        #     with open(fileName, 'wb') as audio:
+        #         audio.write(response.content)
+        #         print(">> 文本转语音已完成，生成的音频文件：" + fileName)
+        # else:
+        #     print("[失败] response code: " + str(response.status_code)
+        #             + "\nresponse headers: " + str(response.headers) )
+
+
+
+
+
+
+
+        # message = "test"
+        # if self.server.send_message(message):
+        #     self.text_edit.append(f"{message}")
+
+
+
     def receive_message(self, message):
         self.text_edit.append(f"{message}")
         cursor = self.text_edit.textCursor()
@@ -160,9 +334,51 @@ class MainWindow(QtWidgets.QMainWindow):
         textBlockFormat.setBottomMargin(3)
         cursor.mergeBlockFormat(textBlockFormat)
         self.text_edit.setTextCursor(cursor)
+    
+    def receive_binary(self, message):
+        self.text_edit.append(f"{message}")
 
     def closeEvent(self, event):
         self.server.close()
+    
+
+    def record_voice(self, time=3, save_file="test.wav"):
+        CHUNK = 1024
+        FORMAT = pyaudio.paInt16
+        CHANNELS = 1
+        RATE = 44100
+        RECORD_SECONDS = time  #需要录制的时间
+        WAVE_OUTPUT_FILENAME = save_file	#保存的文件名
+
+        p = pyaudio.PyAudio()	#初始化
+        print("ON")
+
+        stream = p.open(format=FORMAT,
+                        channels=CHANNELS,
+                        rate=RATE,
+                        input=True,
+                        frames_per_buffer=CHUNK)#创建录音文件
+        frames = []
+
+        for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
+            data = stream.read(CHUNK)
+            frames.append(data)#开始录音
+
+        print("OFF")
+
+        print(frames)
+        return b''.join(frames)
+
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+
+        wf = wave.open(WAVE_OUTPUT_FILENAME, 'wb')	#保存
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(p.get_sample_size(FORMAT))
+        wf.setframerate(RATE)
+        wf.writeframes(b''.join(frames))
+        wf.close()
 
 
 

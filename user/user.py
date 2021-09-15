@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtWebSockets, QtNetwork, QtGui, QtWidgets, uic
+import pyaudio
 import sys
 
 
@@ -8,6 +9,7 @@ class MyClient():
         self.client = QtWebSockets.QWebSocket(name,QtWebSockets.QWebSocketProtocol.Version13,None)
         self.client.error.connect(self.error)
         self.client.textMessageReceived.connect(self.receive_message)
+        self.client.binaryMessageReceived.connect(self.receive_binary)
         self.client.stateChanged.connect(self.ui.connect_status)
     
     def connect(self, server_addr):
@@ -27,6 +29,10 @@ class MyClient():
     def receive_message(self, message):
         self.ui.showNormal()
         self.ui.receive_message(message)
+    
+    def receive_binary(self, message):
+        self.ui.showNormal()
+        self.ui.receive_binary(message)
 
 
     def error(self, error_code):
@@ -85,8 +91,11 @@ class MainWindow_Client(QtWidgets.QMainWindow):
         self.line_edit.setClearButtonEnabled(True)
         button_send = QtWidgets.QPushButton("Send")
         button_send.clicked.connect(self.send_message)
+        button_send_voice = QtWidgets.QPushButton("Voice")
+        button_send_voice.clicked.connect(self.send_voice)
         layout_line.addWidget(self.line_edit)
         layout_line.addWidget(button_send)
+        layout_line.addWidget(button_send_voice)
         layout.addLayout(layout_line)
         self.line_edit.returnPressed.connect(button_send.click)
 
@@ -119,6 +128,10 @@ class MainWindow_Client(QtWidgets.QMainWindow):
 
             self.line_edit.clear()
 
+    def send_voice(self):
+        pass
+
+
     def receive_message(self, message):
         self.text_edit.append(f"{message}")
         cursor = self.text_edit.textCursor()
@@ -130,6 +143,32 @@ class MainWindow_Client(QtWidgets.QMainWindow):
         textBlockFormat.setBottomMargin(3)
         cursor.mergeBlockFormat(textBlockFormat)
         self.text_edit.setTextCursor(cursor)
+
+    def receive_binary(self, binary):
+        # self.text_edit.append(f"{binary}")
+        if QtWidgets.QMessageBox.question(self, u'新语音消息', u"您有一条来自智能助手的语音消息。是否播放？", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes) == QtWidgets.QMessageBox.Yes:
+        #?res = QtWidgets.QMessageBox.question(self, u'新语音消息', u"是否播放？", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes)
+            p = pyaudio.PyAudio()
+            FORMAT = pyaudio.paInt16
+            CHANNELS = 1
+            RATE = 44100
+
+            stream = p.open(format=FORMAT,
+                            channels=CHANNELS,
+                            rate=RATE,
+                            output=True)
+            data = binary
+            stream.write(data)
+            # # 播放  
+            # while data != '':
+            #     stream.write(data)
+            #     data = wf.readframes(CHUNK)
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+
+
+
 
     def connect_status(self):
         if self.client.client.state() == 3:
