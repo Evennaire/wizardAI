@@ -1,70 +1,14 @@
-from PyQt5 import QtCore, QtWebSockets, QtNetwork, QtGui, QtWidgets, uic
-import pyaudio
+import os
 import sys
-import wave
-import os, requests, time
 import threading
+import pyaudio
+from PyQt5 import QtCore, QtWebSockets, QtNetwork, QtGui, QtWidgets
 
 import faulthandler
 faulthandler.enable()
 
-
-class VoiceRecorder():
-    def __init__(self):
-        self.CHUNK = 1024
-        self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1
-        self.RATE = 44100
-        self.RECORD_SECONDS = 3  #需要录制的时间
-        self.WAVE_OUTPUT_FILENAME = "test.wav"	#保存的文件名
-        self.frames = []
-        self.p = pyaudio.PyAudio()
-        # self.thread.setDaemon(True)
-        self.recording_flag = False
-
-    def start_record(self):
-        print("ON")
-        self.stream = self.p.open(format=self.FORMAT,
-                                channels=self.CHANNELS,
-                                rate=self.RATE,
-                                input=True,
-                                frames_per_buffer=self.CHUNK)
-        self.recording_flag = True
-        self.thread = threading.Thread(target=self.recording)
-        self.thread.start()
-
-
-        # for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
-        #     #开始录音
-
-    def recording(self):
-        while self.recording_flag:
-            self.frames.append(self.stream.read(self.CHUNK))
-
-    def stop_record(self):
-        self.recording_flag = False
-        time.sleep(0.5)
-        print("OFF")
-        print(self.frames)
-        self.stream.stop_stream()
-        print("stop stream")
-        self.stream.close()
-        print("stream close")
-        # self.p.terminate()
-        # print("terminate")
-
-    def get_frame(self):
-        return b''.join(self.frames)
-
-    def save(self):
-        wf = wave.open(self.WAVE_OUTPUT_FILENAME, 'wb')	#保存
-        wf.setnchannels(CHANNELS)
-        wf.setsampwidth(p.get_sample_size(FORMAT))
-        wf.setframerate(RATE)
-        wf.writeframes(b''.join(self.frames))
-        wf.close()
-
-
+sys.path.append("..")
+from utils import VoiceRecorder, VoicePlayer
 
 
 class MyServer():
@@ -144,6 +88,9 @@ class MyServer():
             self.clientConnection.deleteLater()
         if self.server.isListening():
             self.ui.label_connect.setText("Listening..")
+    
+    def is_connected(self):
+        return len(self.clients) > 0
 
 
 
@@ -198,11 +145,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.line_edit.setClearButtonEnabled(True)
         button_send = QtWidgets.QPushButton("Send")
         button_send.clicked.connect(self.send_message)
-        button_send_voice = QtWidgets.QPushButton("Voice")
-        button_send_voice.clicked.connect(self.send_voice)
+        self.button_send_voice = QtWidgets.QPushButton("")
+        self.button_send_voice.setIcon(QtGui.QIcon("../image/voice1.png"))
+        self.button_send_voice.clicked.connect(self.send_voice)
         layout_line.addWidget(self.line_edit)
         layout_line.addWidget(button_send)
-        layout_line.addWidget(button_send_voice)
+        layout_line.addWidget(self.button_send_voice)
         layout.addLayout(layout_line)
         self.line_edit.returnPressed.connect(button_send.click)
 
@@ -233,15 +181,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def send_voice(self):
+        if not self.server.is_connected():
+            return
         if self.recorder:
             self.recorder.stop_record()
             bdata = self.recorder.get_frame()
             self.server.send_binary(bdata)
             del(self.recorder)
             self.recorder = None
+            self.button_send_voice.setIcon(QtGui.QIcon("../image/voice1.png"))
         else:
             self.recorder = VoiceRecorder()
             self.recorder.start_record()
+            self.button_send_voice.setIcon(QtGui.QIcon("../image/voice2.png"))
+
         
 
 
@@ -335,52 +288,14 @@ class MainWindow(QtWidgets.QMainWindow):
         cursor.mergeBlockFormat(textBlockFormat)
         self.text_edit.setTextCursor(cursor)
     
-    def receive_binary(self, message):
-        self.text_edit.append(f"{message}")
+    def receive_binary(self, binary):
+        if QtWidgets.QMessageBox.question(self, u'新语音消息', u"您有一条来自智能助手的语音消息。是否播放？", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes) == QtWidgets.QMessageBox.Yes:
+            player = VoicePlayer(binary)
+            player.start()
 
     def closeEvent(self, event):
         self.server.close()
     
-
-    def record_voice(self, time=3, save_file="test.wav"):
-        CHUNK = 1024
-        FORMAT = pyaudio.paInt16
-        CHANNELS = 1
-        RATE = 44100
-        RECORD_SECONDS = time  #需要录制的时间
-        WAVE_OUTPUT_FILENAME = save_file	#保存的文件名
-
-        p = pyaudio.PyAudio()	#初始化
-        print("ON")
-
-        stream = p.open(format=FORMAT,
-                        channels=CHANNELS,
-                        rate=RATE,
-                        input=True,
-                        frames_per_buffer=CHUNK)#创建录音文件
-        frames = []
-
-        for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
-            data = stream.read(CHUNK)
-            frames.append(data)#开始录音
-
-        print("OFF")
-
-        print(frames)
-        return b''.join(frames)
-
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
-
-        wf = wave.open(WAVE_OUTPUT_FILENAME, 'wb')	#保存
-        wf.setnchannels(CHANNELS)
-        wf.setsampwidth(p.get_sample_size(FORMAT))
-        wf.setframerate(RATE)
-        wf.writeframes(b''.join(frames))
-        wf.close()
-
-
 
 
 if __name__ == "__main__":

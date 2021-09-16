@@ -1,6 +1,13 @@
-from PyQt5 import QtCore, QtWebSockets, QtNetwork, QtGui, QtWidgets, uic
-import pyaudio
+import os
 import sys
+import pyaudio
+from PyQt5 import QtCore, QtWebSockets, QtNetwork, QtGui, QtWidgets, Qt
+
+import faulthandler
+faulthandler.enable()
+
+sys.path.append("..") 
+from utils import VoiceRecorder, VoicePlayer
 
 
 class MyClient():
@@ -26,12 +33,22 @@ class MyClient():
             return True
         return False
     
+    def send_binary(self, binary):
+        if self.client.state() == 3:
+            self.client.sendBinaryMessage(QtCore.QByteArray(binary))
+            return True
+        return False
+
     def receive_message(self, message):
         self.ui.showNormal()
+        self.ui.setFocus()
         self.ui.receive_message(message)
     
     def receive_binary(self, message):
         self.ui.showNormal()
+        self.ui.setFocus(True)
+        self.ui.raise_()
+        self.ui.activateWindow()
         self.ui.receive_binary(message)
 
 
@@ -51,6 +68,7 @@ class MainWindow_Client(QtWidgets.QMainWindow):
         self.client = MyClient("Client", self)
         self.show()
         self.build()
+        self.recorder = None
         if server_addr:
             self.line_edit_ip.setText(server_addr)
             self.connect()
@@ -91,11 +109,12 @@ class MainWindow_Client(QtWidgets.QMainWindow):
         self.line_edit.setClearButtonEnabled(True)
         button_send = QtWidgets.QPushButton("Send")
         button_send.clicked.connect(self.send_message)
-        button_send_voice = QtWidgets.QPushButton("Voice")
-        button_send_voice.clicked.connect(self.send_voice)
+        self.button_send_voice = QtWidgets.QPushButton("")
+        self.button_send_voice.setIcon(QtGui.QIcon("../image/voice1.png"))
+        self.button_send_voice.clicked.connect(self.send_voice)
         layout_line.addWidget(self.line_edit)
         layout_line.addWidget(button_send)
-        layout_line.addWidget(button_send_voice)
+        layout_line.addWidget(self.button_send_voice)
         layout.addLayout(layout_line)
         self.line_edit.returnPressed.connect(button_send.click)
 
@@ -129,7 +148,17 @@ class MainWindow_Client(QtWidgets.QMainWindow):
             self.line_edit.clear()
 
     def send_voice(self):
-        pass
+        if self.recorder:
+            self.recorder.stop_record()
+            bdata = self.recorder.get_frame()
+            self.client.send_binary(bdata)
+            del(self.recorder)
+            self.recorder = None
+            self.button_send_voice.setIcon(QtGui.QIcon("../image/voice1.png"))
+        else:
+            self.recorder = VoiceRecorder()
+            self.recorder.start_record()
+            self.button_send_voice.setIcon(QtGui.QIcon("../image/voice2.png"))
 
 
     def receive_message(self, message):
@@ -145,30 +174,9 @@ class MainWindow_Client(QtWidgets.QMainWindow):
         self.text_edit.setTextCursor(cursor)
 
     def receive_binary(self, binary):
-        # self.text_edit.append(f"{binary}")
         if QtWidgets.QMessageBox.question(self, u'新语音消息', u"您有一条来自智能助手的语音消息。是否播放？", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes) == QtWidgets.QMessageBox.Yes:
-        #?res = QtWidgets.QMessageBox.question(self, u'新语音消息', u"是否播放？", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes)
-            p = pyaudio.PyAudio()
-            FORMAT = pyaudio.paInt16
-            CHANNELS = 1
-            RATE = 44100
-
-            stream = p.open(format=FORMAT,
-                            channels=CHANNELS,
-                            rate=RATE,
-                            output=True)
-            data = binary
-            stream.write(data)
-            # # 播放  
-            # while data != '':
-            #     stream.write(data)
-            #     data = wf.readframes(CHUNK)
-            stream.stop_stream()
-            stream.close()
-            p.terminate()
-
-
-
+            player = VoicePlayer(binary)
+            player.start()
 
     def connect_status(self):
         if self.client.client.state() == 3:
