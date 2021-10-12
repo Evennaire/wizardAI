@@ -195,86 +195,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.recorder.start_record()
             self.button_send_voice.setIcon(QtGui.QIcon("../image/voice2.png"))
 
-        
-
-
-        # text = self.line_edit.text()
-        # subscription_key = "3b526f03d9ef4808af2920587b8b04b2"
-        # # tts = input("Input some text to convert to speech: ")  # 控制台输入
-        # tts = text
-        # timestr = time.strftime("%Y%m%d-%H%M")
- 
-        # # # 如果需要代理
-        # # proxies = {
-        # #     "http": "代理地址1",
-        # #     "https": "代理地址2",
-        # # }
- 
-        # fetch_token_url = "https://westus.api.cognitive.microsoft.com/sts/v1.0/issueToken"
-        # headers = {
-        #     'Ocp-Apim-Subscription-Key': subscription_key
-        # }
-        # response = requests.post(fetch_token_url, headers=headers,  verify=False) #proxies=proxies,
-        # access_token = str(response.text)
-        # print(">> 获取到Token：" + access_token)
-        # constructed_url = 'https://westus.tts.speech.microsoft.com/cognitiveservices/v1'
-        # headers = {
-        #     # 前面带有单词 Bearer 的授权令牌
-        #     'Authorization': 'Bearer ' + access_token,
- 
-        #     # 指定所提供的文本的内容类型。 接受的值：application/ssml+xml。
-        #     'Content-Type': 'application/ssml+xml',
- 
-        #     # 指定音频输出格式，取值如下：
-        #     # raw-16khz-16bit-mono-pcm
-        #     # raw-8khz-8bit-mono-mulaw
-        #     # riff-8khz-8bit-mono-alaw
-        #     # riff-8khz-8bit-mono-mulaw
-        #     # riff-16khz-16bit-mono-pcm
-        #     # audio-16khz-128kbitrate-mono-mp3
-        #     # audio-16khz-64kbitrate-mono-mp3
-        #     # audio-16khz-32kbitrate-mono-mp3
-        #     # raw-24khz-16bit-mono-pcm
-        #     # riff-24khz-16bit-mono-pcm
-        #     # audio-24khz-160kbitrate-mono-mp3
-        #     # audio-24khz-96kbitrate-mono-mp3
-        #     # audio-24khz-48kbitrate-mono-mp3
-        #     'X-Microsoft-OutputFormat': 'raw-16khz-16bit-mono-pcm',
- 
-        #     # 应用程序名称，少于 255 个字符。
-        #     # Chrome的 User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36
-        #     'User-Agent': 'Chrome/73.0.3683.86'
-        # }
-        # xml_body = ElementTree.Element('speak', version='1.0')
-        # xml_body.set('{http://www.w3.org/XML/1998/namespace}lang', 'zh-cn')
-        # voice = ElementTree.SubElement(xml_body, 'voice')
-        # voice.set('{http://www.w3.org/XML/1998/namespace}lang', 'zh-cn')
-        # # 'en-US-Guy24kRUS'，全称：'Microsoft Server Speech Text to Speech Voice (en-US, Guy24KRUS)'
-        # voice.set('name','en-US-Guy24kRUS')
-        # voice.text = tts
-        # body = ElementTree.tostring(xml_body)
-        # print(">> 调用接口转换语音中......")
-        # response = requests.post(constructed_url, headers=headers, data=body, verify=False) #proxies=proxies, 
-        # if response.status_code == 200:
-        #     fileName = 'testsound-' + timestr + '.wav'
-        #     with open(fileName, 'wb') as audio:
-        #         audio.write(response.content)
-        #         print(">> 文本转语音已完成，生成的音频文件：" + fileName)
-        # else:
-        #     print("[失败] response code: " + str(response.status_code)
-        #             + "\nresponse headers: " + str(response.headers) )
-
-
-
-
-
-
-
-        # message = "test"
-        # if self.server.send_message(message):
-        #     self.text_edit.append(f"{message}")
-
-
 
     def receive_message(self, message):
         self.text_edit.append(f"{message}")
@@ -287,7 +207,8 @@ class MainWindow(QtWidgets.QMainWindow):
         textBlockFormat.setBottomMargin(3)
         cursor.mergeBlockFormat(textBlockFormat)
         self.text_edit.setTextCursor(cursor)
-    
+
+
     def receive_binary(self, binary):
         if QtWidgets.QMessageBox.question(self, u'新语音消息', u"您有一条来自智能助手的语音消息。是否播放？", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes) == QtWidgets.QMessageBox.Yes:
             player = VoicePlayer(binary)
@@ -295,7 +216,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event):
         self.server.close()
-    
 
 
 if __name__ == "__main__":

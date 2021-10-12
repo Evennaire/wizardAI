@@ -23,7 +23,7 @@ user：`user/`目录下运行`python3 user.py`
 >   python --version
 >   ```
 >
-> + Find the corresponding `.whl` file: [lfd.uci.edu/~gohlke/pythonlibs/#pyaudio](https://github.com/ISC-Lab/T4Train-beta/blob/master/readme_assets/lfd.uci.edu/~gohlke/pythonlibs/#pyaudio)
+> + Find the corresponding `.whl` file: [lfd.uci.edu/~gohlke/pythonlibs/#pyaudio](https://lfd.uci.edu/~gohlke/pythonlibs/#pyaudio)
 >
 >   The number after `cp` is the version number and the number after `win` is the bit information
 >
@@ -35,6 +35,6 @@ user：`user/`目录下运行`python3 user.py`
 
 ## Todo
 
-+ 语音消息显示在聊天界面上（类似于微信语音消息）
 + 保存消息记录（到txt+wav），便于之后分析实验数据
++ 语音消息显示在聊天界面上（类似于微信语音消息）
 
