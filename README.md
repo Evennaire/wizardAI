@@ -23,7 +23,7 @@ user：`user/`目录下运行`python3 user.py`
 >   python --version
 >   ```
 >
-> + Find the corresponding `.whl` file: [lfd.uci.edu/~gohlke/pythonlibs/#pyaudio](https://lfd.uci.edu/~gohlke/pythonlibs/#pyaudio)
+> + Find the corresponding `.whl` file: [lfd.uci.edu/~gohlke/pythonlibs/#pyaudio](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio)
 >
 >   The number after `cp` is the version number and the number after `win` is the bit information
 >
